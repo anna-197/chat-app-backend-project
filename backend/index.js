@@ -1,4 +1,6 @@
 import express from 'express';
+import { Server } from 'socket.io';
+import { createServer } from 'http';
 
 //create app using constructor of express
 const app = express();
@@ -33,6 +35,42 @@ function getAllMessages(req, res) {
 app.post('/send', send)
 
 app.get('/getAllMessages', getAllMessages)
+
+// Websocket
+const server = createServer(app);
+const io = new Server(server);
+
+let sessions = {}
+let pending_chats = []
+
+function onGettingUserId(userId, socket) {
+    //maps the socket id in sessions map
+    sessions[userId] = socket.id;
+}
+
+function receiveMsg(msg, socket) {
+    let receiver = msg.receiver;
+    let receiver_session = sessions[receiver];
+
+    // If receiver is not connected, put chat in pending
+    if (!receiver_session) pending_chats.push(msg);
+    else socket.broadcast.to(receiver_session).emit('message', msg);
+}
+
+function onConnect(socket) {
+    // Event to get userID
+    socket.emit('getUserID');
+    //event to get response
+    socket.on('userId', (userId) => onGettingUserId(userId, socket));
+
+    // Filter out pending chats of this user and send it
+  
+
+    socket.on('receiveMsg', (msg) => receiveMsg(msg, socket))
+}
+
+io.on('connect', onConnect)
+
 
 // port
 app.listen(3007)
