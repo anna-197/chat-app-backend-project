@@ -1,11 +1,11 @@
 import express from 'express';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
+import cors from 'cors';
 
-//create app using constructor of express
 const app = express();
 app.use(express.json())
-// app.use(cors())
+app.use(cors())
 
 let chats = []
 
@@ -36,6 +36,7 @@ app.post('/send', send)
 
 app.get('/getAllMessages', getAllMessages)
 
+
 // Websocket
 const server = createServer(app);
 const io = new Server(server);
@@ -43,12 +44,11 @@ const io = new Server(server);
 let sessions = {}
 let pending_chats = []
 
-function onGettingUserId(userId, socket) {
-    //maps the socket id in sessions map
+function onGetUserId(userId, socket) {
     sessions[userId] = socket.id;
 }
 
-function receiveMsg(msg, socket) {
+function sendMsg(msg, socket) {
     let receiver = msg.receiver;
     let receiver_session = sessions[receiver];
 
@@ -58,19 +58,17 @@ function receiveMsg(msg, socket) {
 }
 
 function onConnect(socket) {
-    // Event to get userID
+    // Event
     socket.emit('getUserID');
-    //event to get response
-    socket.on('userId', (userId) => onGettingUserId(userId, socket));
+    socket.on('userId', (userId) => onGetUserId(userId, socket));
 
     // Filter out pending chats of this user and send it
   
 
-    socket.on('receiveMsg', (msg) => receiveMsg(msg, socket))
+    socket.on('sendMsg', (msg) => sendMsg(msg, socket))
 }
 
 io.on('connect', onConnect)
 
-
 // port
-app.listen(3007)
+server.listen(3007)
